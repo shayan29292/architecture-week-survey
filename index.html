@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>سامانه سنجش و ارزیابی مهندسی مبتنی بر بازی‌وارسازی</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vazirmatn@33.0.3/Vazirmatn-font-face.css">
+  <style>
+    :root {
+      --bg-dark: #070a12;
+      --hud-bg: rgba(13, 19, 33, 0.92);
+      --hud-border: rgba(99, 102, 241, 0.35);
+      --primary: #6366f1;
+      --primary-neon: #818cf8;
+      --accent: #10b981;
+      --accent-glow: rgba(16, 185, 129, 0.5);
+      --star-off: rgba(255, 255, 255, 0.15);
+      --star-on: #fbbf24;
+      --star-glow: rgba(251, 191, 36, 0.65);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-dark);
+      background-image: 
+        linear-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+        radial-gradient(circle at 50% 30%, rgba(99, 102, 241, 0.12) 0%, transparent 65%);
+      background-size: 32px 32px, 32px 32px, 100% 100%;
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 12px;
+    }
+
+    .hud-container {
+      width: 100%;
+      max-width: 820px;
+      background: var(--hud-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--hud-border);
+      border-radius: 18px;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.85), inset 0 0 15px rgba(99, 102, 241, 0.15);
+      padding: 24px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bg-watermark {
+      position: absolute;
+      left: -20px;
+      bottom: -30px;
+      width: 200px;
+      height: 200px;
+      opacity: 0.04;
+      pointer-events: none;
+      transition: all 0.5s ease;
+      fill: #fff;
+      z-index: 0;
+    }
+
+    .hud-container::before, .hud-container::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--primary-neon);
+      z-index: 2;
+    }
+    .hud-container::before { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+    .hud-container::after { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+
+    .hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 16px;
+      margin-bottom: 22px;
+      position: relative;
+      z-index: 1;
+      gap: 10px;
+    }
+
+    .level-info-wrapper { display: flex; align-items: center; gap: 10px; }
+
+    .level-icon-box {
+      width: 42px;
+      height: 42px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid var(--primary-neon);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+      flex-shrink: 0;
+    }
+
+    .level-icon-box svg { width: 24px; height: 24px; fill: var(--primary-neon); }
+
+    .level-title-group { display: flex; flex-direction: column; gap: 2px; }
+    .level-badge { font-size: 0.7rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; }
+    .level-name { font-size: 1.05rem; font-weight: 700; color: #fff; }
+
+    .stars-panel {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 8px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      flex-shrink: 0;
+    }
+
+    .star-icon {
+      width: 18px;
+      height: 18px;
+      fill: var(--star-off);
+      transition: all 0.4s ease;
+    }
+
+    .star-icon.active {
+      fill: var(--star-on);
+      filter: drop-shadow(0 0 6px var(--star-glow));
+      transform: scale(1.15);
+    }
+
+    .question-step { display: none; animation: fadeIn 0.35s ease-out; position: relative; z-index: 1; }
+    .question-step.active { display: block; }
+
+    .question-title {
+      font-size: 0.98rem; font-weight: 600; line-height: 1.6; margin-bottom: 18px;
+      color: #fff; display: flex; align-items: flex-start; gap: 10px;
+    }
+
+    .q-num-box {
+      background: rgba(99, 102, 241, 0.2); border: 1px solid var(--primary-neon);
+      color: var(--primary-neon); width: 28px; height: 28px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; flex-shrink: 0; margin-top: 2px;
+    }
+
+    input[type="text"], input[type="number"], input[type="tel"] {
+      width: 100%; padding: 12px 15px; border-radius: 10px; border: 1px solid var(--hud-border);
+      background: rgba(15, 23, 42, 0.85); color: #fff; font-size: 0.9rem; margin-bottom: 12px;
+    }
+
+    input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+
+    .options-grid { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr); 
+      gap: 10px; 
+      margin-bottom: 12px; 
+    }
+
+    .option-card {
+      background: rgba(255, 255, 255, 0.03); border: 1px solid var(--hud-border); padding: 12px 8px;
+      text-align: center; border-radius: 10px; cursor: pointer; font-size: 0.85rem; transition: all 0.25s ease;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .option-card svg { width: 20px; height: 20px; fill: var(--text-muted); }
+    .option-card:hover { background: rgba(99, 102, 241, 0.15); border-color: var(--primary-neon); }
+    .option-card.selected { background: var(--primary); border-color: var(--primary-neon); box-shadow: 0 0 12px rgba(99, 102, 241, 0.5); color: #fff; }
+    .option-card.selected svg { fill: #fff; }
+
+    .btn-group { display: flex; justify-content: space-between; margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.08); position: relative; z-index: 1; }
+
+    .btn { padding: 10px 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: all 0.3s ease; }
+    .btn-next { background: linear-gradient(135deg, var(--primary), #4f46e5); color: white; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+    .btn-prev { background: transparent; color: var(--text-muted); border: 1px solid var(--hud-border); }
+
+    .success-screen {
+      display: none;
+      text-align: center;
+      padding: 15px 5px;
+      position: relative;
+      z-index: 1;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    .success-screen h2 {
+      color: var(--accent);
+      margin-bottom: 10px;
+      font-size: 1.4rem;
+      font-weight: 800;
+      text-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .success-subtext {
+      color: #fff;
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+
+    .token-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px dashed var(--accent);
+      border-radius: 12px;
+      padding: 15px;
+      max-width: 320px;
+      margin: 0 auto;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+    }
+
+    .token-label {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 6px;
+    }
+
+    .token-value {
+      font-family: monospace, sans-serif;
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: var(--star-on);
+      letter-spacing: 2px;
+      text-shadow: 0 0 8px var(--star-glow);
+    }
+
+    @media (min-width: 600px) {
+      body { padding: 20px; }
+      .hud-container { padding: 35px; }
+      .options-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+      .level-name { font-size: 1.25rem; }
+      .question-title { font-size: 1.05rem; }
+      .star-icon { width: 22px; height: 22px; }
+      .btn { padding: 12px 24px; font-size: 0.9rem; }
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+
+<div class="hud-container">
+  <svg class="bg-watermark" id="bg-watermark" viewBox="0 0 24 24"></svg>
+
+  <div class="hud-header" id="hud-header">
+    <div class="level-info-wrapper">
+      <div class="level-icon-box" id="level-icon-box"></div>
+      <div class="level-title-group">
+        <div class="level-badge" id="level-badge">LEVEL 1 OF 4</div>
+        <div class="level-name" id="level-name">پروفایل بازیکن</div>
+      </div>
+    </div>
+    <div class="stars-panel" id="stars-container"></div>
+  </div>
+
+  <form id="survey-form">
+    
+    <!-- LEVEL 1 -->
+    <div class="question-step active" data-step="1">
+      <div class="question-title"><div class="q-num-box">۱</div>سن شما چند سال است؟</div>
+      <input type="number" id="input-sen" placeholder="مثال: ۲۴" min="15" max="99">
+      <input type="hidden" name="entry.1624769186" id="entry-sen">
+    </div>
+
+    <div class="question-step" data-step="2">
+      <div class="question-title"><div class="q-num-box">۲</div>جنسیت خود را انتخاب کنید:</div>
+      <div class="options-grid">
+        <div class="option-card" onclick="selectOption('entry.1999984354', 'زن', this)">زن</div>
+        <div class="option-card" onclick="selectOption('entry.1999984354', 'مرد', this)">مرد</div>
+      </div>
+      <input type="hidden" name="entry.1999984354" id="entry-1999984354">
+    </div>
+
+    <div class="question-step" data-step="3">
+      <div class="question-title"><div class="q-num-box">۳</div>مقطع تحصیلی فعلی یا آخرین مقطع تحصیلی:</div>
+      <div class="options-grid" style="grid-template-columns: 1fr;">
+        <div class="option-card" onclick="selectOption('entry.1587398370', 'كارشناسي', this)">کارشناسی</div>
+        <div class="option-card" onclick="selectOption('entry.1587398370', 'كارشناسي ارشد', this)">کارشناسی ارشد</div>
+        <div class="option-card" onclick="selectOption('entry.1587398370', 'دكتري', this)">دکتری</div>
+      </div>
+      <input type="hidden" name="entry.1587398370" id="entry-1587398370">
+    </div>
+
+    <div class="question-step" data-step="4">
+      <div class="question-title"><div class="q-num-box">۴</div>رشته و گرایش تحصیلی:</div>
+      <input type="text" id="input-reshteh" placeholder="مثال: مهندسی عمران - مدیریت ساخت">
+      <input type="hidden" name="entry.1104445738" id="entry-reshteh">
+    </div>
+
+    <div class="question-step" data-step="5">
+      <div class="question-title"><div class="q-num-box">۵</div>میزان سابقه شما در انجام بازی‌های رایانه‌ای یا تعاملی:</div>
+      <div class="options-grid" style="grid-template-columns: 1fr;">
+        <div class="option-card" onclick="selectOption('entry.903510475', 'خيلي كم', this)">خیلی کم</div>
+        <div class="option-card" onclick="selectOption('entry.903510475', 'چند ساعت در ماه', this)">چند ساعت در ماه</div>
+        <div class="option-card" onclick="selectOption('entry.903510475', 'چند ساعت در هفته', this)">چند ساعت در هفته</div>
+        <div class="option-card" onclick="selectOption('entry.903510475', 'روزانه', this)">روزانه</div>
+        <div class="option-card" onclick="selectOption('entry.903510475', 'گيمر حرفه اي', this)">گیمر حرفه‌ای</div>
+      </div>
+      <input type="hidden" name="entry.903510475" id="entry-903510475">
+    </div>
+
+    <!-- LEVEL 2 -->
+    <div class="question-step" data-step="6">
+      <div class="question-title"><div class="q-num-box">۶</div>روش‌های ارزیابی فعلی در دانشگاه تا چه اندازه توانایی و مهارت مورد نیاز در محیط کار واقعی را نشان می‌دهند؟</div>
+      <div class="options-grid" data-entry="entry.614836711"></div>
+      <input type="hidden" name="entry.614836711" id="entry-614836711">
+    </div>
+
+    <div class="question-step" data-step="7">
+      <div class="question-title"><div class="q-num-box">۷</div>روش‌های رایج ارزیابی (امتحان تستی و تشریحی، پروژه و...) تا چه اندازه می‌توانند توانایی واقعی دانشجو را نشان دهند؟</div>
+      <div class="options-grid" data-entry="entry.1215911169"></div>
+      <input type="hidden" name="entry.1215911169" id="entry-1215911169">
+    </div>
+
+    <div class="question-step" data-step="8">
+      <div class="question-title"><div class="q-num-box">۸</div>با توجه به گسترش هوش مصنوعی، تا چه اندازه پروژه‌ها را همچنان نشان‌دهنده تسلط واقعی دانشجو می‌دانید؟</div>
+      <div class="options-grid" data-entry="entry.1069949287" data-alt-last="خیلی زياد"></div>
+      <input type="hidden" name="entry.1069949287" id="entry-1069949287">
+    </div>
+
+    <!-- LEVEL 3 -->
+    <div class="question-step" data-step="9">
+      <div class="question-title"><div class="q-num-box">۹</div>بازی‌های رایانه‌ای یا تعاملی تا چه اندازه برای شما جذاب و لذت‌بخش هستند؟</div>
+      <div class="options-grid" data-entry="entry.1450014134" data-first="اصلاً"></div>
+      <input type="hidden" name="entry.1450014134" id="entry-1450014134">
+    </div>
+
+    <div class="question-step" data-step="10">
+      <div class="question-title"><div class="q-num-box">۱۰</div>استفاده از بازی به‌عنوان روش ارزیابی، تا چه اندازه می‌تواند سطح واقعی مهارت دانشجویان را نشان دهد؟</div>
+      <div class="options-grid" data-entry="entry.1780790243" data-alt-last="خیلی زياد"></div>
+      <input type="hidden" name="entry.1780790243" id="entry-1780790243">
+    </div>
+
+    <div class="question-step" data-step="11">
+      <div class="question-title"><div class="q-num-box">۱۱</div>ارزیابی توانایی دانشجویان با استفاده از بازی تا چه اندازه می‌تواند عادلانه باشد؟</div>
+      <div class="options-grid" data-entry="entry.931861764" data-alt-last="خیلی زياد"></div>
+      <input type="hidden" name="entry.931861764" id="entry-931861764">
+    </div>
+
+    <div class="question-step" data-step="12">
+      <div class="question-title"><div class="q-num-box">۱۲</div>استفاده از بازی به‌عنوان یکی از روش‌های ارزیابی مهارت‌های مهندسی تا چه اندازه برای شما قابل‌پذیرش است؟</div>
+      <div class="options-grid" data-entry="entry.1907554391" data-first="اصلاً"></div>
+      <input type="hidden" name="entry.1907554391" id="entry-1907554391">
+    </div>
+
+    <div class="question-step" data-step="13">
+      <div class="question-title"><div class="q-num-box">۱۳</div>در صورت فراهم بودن فرصت، تا چه اندازه مایل هستید در یک ارزیابی مهارت‌محور مبتنی بر بازی شرکت کنید؟</div>
+      <div class="options-grid" data-entry="entry.1156550894" data-first="اصلاً"></div>
+      <input type="hidden" name="entry.1156550894" id="entry-1156550894">
+    </div>
+
+    <!-- LEVEL 4 -->
+    <div class="question-step" data-step="14">
+      <div class="question-title"><div class="q-num-box">۱۴</div>در صورت تمایل برای شرکت در آزمون اصلی، شماره تماس خود را وارد کنید (اختیاری):</div>
+      <input type="tel" id="input-phone" placeholder="مثال: 09123456789">
+      <input type="hidden" name="entry.205319500" id="entry-phone">
+    </div>
+
+  </form>
+
+  <div class="success-screen" id="success-screen">
+    <h2>MISSION COMPLETED! ⚡</h2>
+    <p class="success-subtext">دم شما گرم! پاسخ‌هات با موفقیت ثبت شد. 🎮</p>
+    <div class="token-card">
+      <div class="token-label">توکن فراموش نشه:</div>
+      <div class="token-value" id="generated-token">ENG-84K2-X9</div>
+    </div>
+  </div>
+
+  <div class="btn-group" id="btn-group">
+    <button class="btn btn-prev" id="prev-btn" onclick="changeStep(-1)" style="display:none;">مرحله قبلی</button>
+    <button class="btn btn-next" id="next-btn" onclick="handleNext()">مرحله بعدی</button>
+  </div>
+</div>
+
+<script>
+  const levelIcons = {
+    1: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>',
+    2: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>',
+    3: '<path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H9v2H7v-2H5v-2h2V9h2v2h2v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm3-3c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',
+    4: '<path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0011 15.9V18H8v2h8v-2h-3v-2.1c2.12-.39 3.79-2.02 3.96-4.25C19.08 11.3 21 9.25 21 7V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/>'
+  };
+
+  const levels = [
+    { level: 1, name: "پروفایل بازیکن", startQ: 1, endQ: 5 },
+    { level: 2, name: "ارزیابی سیستم سنتی", startQ: 6, endQ: 8 },
+    { level: 3, name: "دنیای بازی‌وارسازی", startQ: 9, endQ: 13 },
+    { level: 4, name: "ثبت‌نام چالش نهایی", startQ: 14, endQ: 14 }
+  ];
+
+  let currentStep = 1;
+  const totalSteps = 14;
+
+  document.querySelectorAll('.options-grid[data-entry]').forEach(grid => {
+    const entryName = grid.getAttribute('data-entry');
+    const firstOpt = grid.getAttribute('data-first') || 'خیلی کم';
+    const lastOpt = grid.getAttribute('data-alt-last') || 'خيلي زياد';
+    const options = [firstOpt, 'کم', 'متوسط', 'زياد', lastOpt];
+    
+    options.forEach((opt, idx) => {
+      const card = document.createElement('div');
+      card.className = 'option-card';
+      const energyLevels = [
+        '<svg viewBox="0 0 24 24"><path d="M16 20H8V6H16V20M16 4H14V2H10V4H8C6.9 4 6 4.9 6 6V20C6 21.1 6.9 22 8 22H16C17.1 22 18 21.1 18 20V6C18 4.9 17.1 4 16 4Z"/></svg>',
+        '<svg viewBox="0 0 24 24"><path d="M16 20H8V16H16V20M16 4H14V2H10V4H8C6.9 4 6 4.9 6 6V20C6 21.1 6.9 22 8 22H16C17.1 22 18 21.1 18 20V6C18 4.9 17.1 4 16 4Z"/></svg>',
+        '<svg viewBox="0 0 24 24"><path d="M16 20H8V12H16V20M16 4H14V2H10V4H8C6.9 4 6 4.9 6 6V20C6 21.1 6.9 22 8 22H16C17.1 22 18 21.1 18 20V6C18 4.9 17.1 4 16 4Z"/></svg>',
+        '<svg viewBox="0 0 24 24"><path d="M16 20H8V9H16V20M16 4H14V2H10V4H8C6.9 4 6 4.9 6 6V20C6 21.1 6.9 22 8 22H16C17.1 22 18 21.1 18 20V6C18 4.9 17.1 4 16 4Z"/></svg>',
+        '<svg viewBox="0 0 24 24"><path d="M16 20H8V6H16V20M16 4H14V2H10V4H8C6.9 4 6 4.9 6 6V20C6 21.1 6.9 22 8 22H16C17.1 22 18 21.1 18 20V6C18 4.9 17.1 4 16 4Z" fill="#10b981"/></svg>'
+      ];
+      card.innerHTML = `${energyLevels[idx]}<span>${opt}</span>`;
+      card.onclick = () => selectOption(entryName, opt, card);
+      grid.appendChild(card);
+    });
+  });
+
+  function getCurrentLevelInfo(step) {
+    return levels.find(l => step >= l.startQ && step <= l.endQ);
+  }
+
+  function updateStep() {
+    document.querySelectorAll('.question-step').forEach(step => step.classList.remove('active'));
+    document.querySelector(`.question-step[data-step="${currentStep}"]`).classList.add('active');
+
+    const currentLvl = getCurrentLevelInfo(currentStep);
+    document.getElementById('level-badge').innerText = `LEVEL ${currentLvl.level} OF 4`;
+    document.getElementById('level-name').innerText = currentLvl.name;
+    document.getElementById('level-icon-box').innerHTML = `<svg viewBox="0 0 24 24">${levelIcons[currentLvl.level]}</svg>`;
+    document.getElementById('bg-watermark').innerHTML = levelIcons[currentLvl.level];
+
+    const totalQuestionsInLvl = (currentLvl.endQ - currentLvl.startQ) + 1;
+    const currentQInLvl = (currentStep - currentLvl.startQ) + 1;
+
+    const starsContainer = document.getElementById('stars-container');
+    starsContainer.innerHTML = '';
+    const svgStar = `<svg class="star-icon" viewBox="0 0 24 24"><path d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z"/></svg>`;
+
+    for (let i = 1; i <= totalQuestionsInLvl; i++) {
+      const starWrapper = document.createElement('div');
+      starWrapper.innerHTML = svgStar;
+      const starSvg = starWrapper.firstElementChild;
+      if (i <= currentQInLvl) starSvg.classList.add('active');
+      starsContainer.appendChild(starSvg);
+    }
+
+    document.getElementById('prev-btn').style.display = currentStep > 1 ? 'block' : 'none';
+    document.getElementById('next-btn').innerText = currentStep === totalSteps ? 'ثبت نهایی اطلاعات' : 'مرحله بعدی';
+  }
+
+  function selectOption(entryName, value, element) {
+    const hiddenInput = document.querySelector(`input[name="${entryName}"]`);
+    if (hiddenInput) hiddenInput.value = value;
+
+    const siblings = element.parentNode.children;
+    for (let sib of siblings) sib.classList.remove('selected');
+    element.classList.add('selected');
+
+    setTimeout(() => { handleNext(); }, 220);
+  }
+
+  function handleNext() {
+    if (currentStep === 1) {
+      const sen = document.getElementById('input-sen').value;
+      if (!sen) return alert('لطفاً سن خود را وارد کنید.');
+      document.getElementById('entry-sen').value = sen;
+    }
+    if (currentStep === 4) {
+      const reshteh = document.getElementById('input-reshteh').value;
+      if (!reshteh) return alert('لطفاً رشته تحصیلی خود را وارد کنید.');
+      document.getElementById('entry-reshteh').value = reshteh;
+    }
+    if (currentStep === 14) {
+      const phone = document.getElementById('input-phone').value;
+      document.getElementById('entry-phone').value = phone;
+    }
+
+    if (currentStep < totalSteps) {
+      currentStep++;
+      updateStep();
+    } else {
+      submitForm();
+    }
+  }
+
+  function changeStep(delta) {
+    currentStep += delta;
+    updateStep();
+  }
+
+  function generateToken() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let token = 'ENG-';
+    for (let i = 0; i < 4; i++) token += chars.charAt(Math.floor(Math.random() * chars.length));
+    token += '-';
+    for (let i = 0; i < 2; i++) token += chars.charAt(Math.floor(Math.random() * chars.length));
+    return token;
+  }
+
+  function submitForm() {
+    const googleFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSccfsUKhuIpuXki1egaQdo_DYA_uX7PC0Gk-VTCV_nR4kWY2g/formResponse";
+    const formElement = document.getElementById('survey-form');
+    const formData = new FormData(formElement);
+
+    fetch(googleFormUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: formData
+    }).then(() => {
+      showSuccessScreen();
+    }).catch(() => {
+      showSuccessScreen();
+    });
+  }
+
+  function showSuccessScreen() {
+    document.getElementById('survey-form').style.display = 'none';
+    document.getElementById('btn-group').style.display = 'none';
+    document.getElementById('hud-header').style.display = 'none';
+
+    document.getElementById('generated-token').innerText = generateToken();
+    document.getElementById('success-screen').style.display = 'block';
+  }
+
+  updateStep();
+</script>
+
+</body>
+</html>
